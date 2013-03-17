@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" initial="locked">
+  <state id="locked">
+    <transition event="coin" target="unlocked" action="unlock"/>
+  </state>
+  <state id="unlocked">
+    <transition event="pass" target="locked" action="lock" />
+  </state>
+</scxml>
+

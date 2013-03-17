@@ -1,0 +1,177 @@
+﻿<#@ template language="C#" #>
+<#@ assembly name="System.Xml.dll" #>
+<#@ assembly name="System.Xml.Linq.dll" #>
+<#@ import namespace="System.Xml" #>
+<#@ import namespace="System.Xml.Linq" #>
+<#@ import namespace="System.Collections" #>
+
+<#
+	string initialState = "";
+	IList states = new ArrayList();
+    IList events = new ArrayList();
+	IList transitions = new ArrayList();
+	
+	XDocument xmlFile = XDocument.Load(xml_file);
+
+    // we assume that the first attribute of Root node is the
+    // namespace declaration
+    XNamespace ns = xmlFile.Root.FirstAttribute.Value;
+    XElement x_scxml = xmlFile.Element(ns + "scxml");
+    initialState = x_scxml.Attribute("initial").Value;
+    var x_states = x_scxml.Elements(ns + "state");
+
+    foreach (XElement x_state in x_states)
+    {
+        string startState = x_state.Attribute("id").Value;
+        states.Add(startState);
+        XElement x_transition = x_state.Element(ns + "transition");
+        string trigger = x_transition.Attribute("event").Value;
+        events.Add(trigger);
+	    string targetState = x_transition.Attribute("target").Value;
+		string transition = startState + "|" + trigger + "|" + targetState;  
+        transitions.Add(transition);
+    }
+#>
+using System;
+using System.Collections;
+
+namespace StateMachine
+{
+	public enum State 
+	{
+		<#
+			string ssep = "";
+			foreach(string s in states)
+			{
+				WriteLine(ssep + s);
+				ssep = ",";
+			}
+		#>
+	}
+
+	public enum Event 
+	{
+		<#
+			string esep = "";
+			foreach(string e in events)
+			{
+				WriteLine(esep + e);
+				esep = ",";
+			}
+		#>
+	}
+
+    public abstract class AbstractStateMachine
+    {
+        private State _currentState;
+        private IList transitions = new ArrayList();
+
+        public delegate void Action();
+
+		<#
+			foreach(string t in transitions)
+			{
+				string[] t_array = t.Split('|'); 
+				WriteLine("public abstract void " + t_array[0] + t_array[2] + "Action();"); 
+			}
+		#>
+
+        public AbstractStateMachine()
+        {
+			_currentState = State.<#= initialState #>;
+			SetupTransitions();
+		}
+
+        public State CurrentState
+        {
+            get { return _currentState; }
+			set { _currentState = value; }
+        }
+
+		public void FireEvent(Event e)
+        { 
+            foreach (Transition trans in transitions)
+            {
+                if (CurrentState == trans.StartState && e == trans.Trigger)
+                {
+                    CurrentState = trans.EndState;
+                    trans.Fire();
+                }
+            }
+        }
+
+		private void SetupTransitions()
+		{
+            <#
+				//AddTranstition(State.LOCKED, Event.COIN, State.UNLOCKED, unlock);
+				//AddTranstition(State.LOCKED, Event.PASS, State.LOCKED, alarm);
+				//AddTranstition(State.UNLOCKED, Event.PASS, State.LOCKED, lockAction);
+				//AddTranstition(State.UNLOCKED, Event.COIN, State.UNLOCKED, thankYou);
+				foreach(string t in transitions)
+				{
+					string[] t_array = t.Split('|');
+					string startState = t_array[0];
+					string trigger = t_array[1];
+					string targetState = t_array[2];
+
+					Write("AddTransition(");
+					Write("ConvertStringToState(\"" + startState + "\"), ");
+					Write("ConvertStringToEvent(\"" + trigger + "\"), ");
+					Write("ConvertStringToState(\"" + targetState + "\"), ");
+					WriteLine("new Action(" + startState + targetState + "Action));");
+				}
+			#>
+		}
+
+		private void AddTransition(State start, Event e, State end, Action a)
+        {
+            transitions.Add(new Transition(start, e, end, a));
+        }
+
+		private State ConvertStringToState(string token)
+        {
+            return (State)Enum.Parse(typeof(State), token);
+        }
+
+        private Event ConvertStringToEvent(string token)
+        {
+            return (Event)Enum.Parse(typeof(Event), token);
+        }
+    }
+
+	internal class Transition
+    {
+        private State _startState;
+        private Event _trigger;
+        private State _endState;
+		private AbstractStateMachine.Action _action;
+
+        public Transition(State start, Event e, State end, AbstractStateMachine.Action a)
+        {
+            _startState = start;
+            _trigger = e;
+            _endState = end;
+            _action = a;
+        }
+
+		public State StartState
+        {
+            get { return _startState; }
+        }
+
+		public Event Trigger
+        {
+            get { return _trigger; }
+        }
+
+        public State EndState
+        {
+            get { return _endState; }
+        }
+
+		public AbstractStateMachine.Action Fire
+		{
+			get { return _action; }
+		}
+    }
+}

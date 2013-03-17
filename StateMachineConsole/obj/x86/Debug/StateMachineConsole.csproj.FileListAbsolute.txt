@@ -1,0 +1,8 @@
+C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachineConsole\bin\Debug\StateMachineConsole.exe.config
+C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachineConsole\bin\Debug\StateMachineConsole.exe
+C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachineConsole\bin\Debug\StateMachineConsole.pdb
+C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachineConsole\bin\Debug\StateMachine.dll
+C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachineConsole\bin\Debug\StateMachine.pdb
+C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachineConsole\obj\x86\Debug\ResolveAssemblyReference.cache
+C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachineConsole\obj\x86\Debug\StateMachineConsole.exe
+C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachineConsole\obj\x86\Debug\StateMachineConsole.pdb

@@ -1,0 +1,5 @@
+C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachine\bin\Debug\StateMachine.dll
+C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachine\bin\Debug\StateMachine.pdb
+C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachine\obj\Debug\ResolveAssemblyReference.cache
+C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachine\obj\Debug\StateMachine.dll
+C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachine\obj\Debug\StateMachine.pdb
