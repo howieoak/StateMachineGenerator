@@ -12,6 +12,7 @@ namespace StateMachine
     using System.Xml;
     using System.Xml.Linq;
     using System.Collections;
+    using System.Collections.Generic;
     using System;
     
     
@@ -80,13 +81,14 @@ namespace StateMachine
             this.GenerationEnvironment = null;
             this.Write("\r\n");
             
-            #line 8 "C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachine\StateMachine.tt"
+            #line 9 "C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachine\StateMachine.tt"
 
 	string initialState = "";
-	IList states = new ArrayList();
-    IList events = new ArrayList();
-	IList transitions = new ArrayList();
+	HashSet<string> states = new HashSet<string>();
+    HashSet<string> events = new HashSet<string>();
+	IList<string> transitions = new List<string>();
 	
+
 	XDocument xmlFile = XDocument.Load(xml_file);
 
     // we assume that the first attribute of Root node is the
@@ -100,12 +102,25 @@ namespace StateMachine
     {
         string startState = x_state.Attribute("id").Value;
         states.Add(startState);
-        XElement x_transition = x_state.Element(ns + "transition");
-        string trigger = x_transition.Attribute("event").Value;
-        events.Add(trigger);
-	    string targetState = x_transition.Attribute("target").Value;
-		string transition = startState + "|" + trigger + "|" + targetState;  
-        transitions.Add(transition);
+        //XElement x_transition = x_state.Element(ns + "transition");
+		var x_transitions = x_state.Elements(ns + "transition");
+		foreach (XElement x_transition in x_transitions)
+		{
+			string trigger = x_transition.Attribute("event").Value;
+			events.Add(trigger);
+			string targetState = x_transition.Attribute("target").Value;
+			string transition = "";
+			if (x_transition.Attribute("action") != null)
+            {
+				transition = startState + "|" + trigger + "|" + targetState + "|" + x_transition.Attribute("action").Value;  
+			}
+			else
+            {
+				transition = startState + "|" + trigger + "|" + targetState;  
+            }
+			transitions.Add(transition);
+
+        }
     }
 
             
@@ -114,7 +129,7 @@ namespace StateMachine
             this.Write("using System;\r\nusing System.Collections;\r\n\r\nnamespace StateMachine\r\n{\r\n\tpublic en" +
                     "um State \r\n\t{\r\n\t\t");
             
-            #line 42 "C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachine\StateMachine.tt"
+            #line 57 "C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachine\StateMachine.tt"
 
 			string ssep = "";
 			foreach(string s in states)
@@ -128,7 +143,7 @@ namespace StateMachine
             #line hidden
             this.Write("\t}\r\n\r\n\tpublic enum Event \r\n\t{\r\n\t\t");
             
-            #line 54 "C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachine\StateMachine.tt"
+            #line 69 "C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachine\StateMachine.tt"
 
 			string esep = "";
 			foreach(string e in events)
@@ -144,12 +159,15 @@ namespace StateMachine
                     "e _currentState;\r\n        private IList transitions = new ArrayList();\r\n\r\n      " +
                     "  public delegate void Action();\r\n\r\n\t\t");
             
-            #line 71 "C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachine\StateMachine.tt"
+            #line 86 "C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachine\StateMachine.tt"
 
 			foreach(string t in transitions)
 			{
-				string[] t_array = t.Split('|'); 
-				WriteLine("public abstract void " + t_array[0] + t_array[2] + "Action();"); 
+				string[] t_array = t.Split('|');
+				if (t_array.Length == 4) // scxml contains action
+					WriteLine("public abstract void " + t_array[3] + "Action();");
+				//else
+				//	WriteLine("public abstract void " + t_array[0] + "To" + t_array[2] + "Action();"); 
 			}
 		
             
@@ -157,7 +175,7 @@ namespace StateMachine
             #line hidden
             this.Write("\r\n        public AbstractStateMachine()\r\n        {\r\n\t\t\t_currentState = State.");
             
-            #line 81 "C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachine\StateMachine.tt"
+            #line 99 "C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachine\StateMachine.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(initialState));
             
             #line default
@@ -179,7 +197,9 @@ namespace StateMachine
                 if (CurrentState == trans.StartState && e == trans.Trigger)
                 {
                     CurrentState = trans.EndState;
-                    trans.Fire();
+					if (trans.Fire != null)
+						trans.Fire();
+					break;
                 }
             }
         }
@@ -188,83 +208,52 @@ namespace StateMachine
 		{
             ");
             
-            #line 105 "C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachine\StateMachine.tt"
+            #line 125 "C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachine\StateMachine.tt"
 
-				//AddTranstition(State.LOCKED, Event.COIN, State.UNLOCKED, unlock);
-				//AddTranstition(State.LOCKED, Event.PASS, State.LOCKED, alarm);
-				//AddTranstition(State.UNLOCKED, Event.PASS, State.LOCKED, lockAction);
-				//AddTranstition(State.UNLOCKED, Event.COIN, State.UNLOCKED, thankYou);
 				foreach(string t in transitions)
 				{
 					string[] t_array = t.Split('|');
-					string startState = t_array[0];
-					string trigger = t_array[1];
-					string targetState = t_array[2];
-
-					Write("AddTransition(");
-					Write("ConvertStringToState(\"" + startState + "\"), ");
-					Write("ConvertStringToEvent(\"" + trigger + "\"), ");
-					Write("ConvertStringToState(\"" + targetState + "\"), ");
-					WriteLine("new Action(" + startState + targetState + "Action));");
+					
+					if (t_array.Length == 4) // scxml contains action
+                    {
+						Write("AddTransition(");
+						Write("ConvertStringToState(\"" + t_array[0] + "\"), ");
+						Write("ConvertStringToEvent(\"" + t_array[1] + "\"), ");
+						Write("ConvertStringToState(\"" + t_array[2] + "\"), ");
+						WriteLine("new Action(" + t_array[3] + "Action));");
+                    }
+					else
+                    {
+						Write("AddTransition(");
+						Write("ConvertStringToState(\"" + t_array[0] + "\"), ");
+						Write("ConvertStringToEvent(\"" + t_array[1] + "\"), ");
+						WriteLine("ConvertStringToState(\"" + t_array[2] + "\"));");
+                    }
 				}
 			
             
             #line default
             #line hidden
-            this.Write(@"		}
-
-		private void AddTransition(State start, Event e, State end, Action a)
-        {
-            transitions.Add(new Transition(start, e, end, a));
-        }
-
-		private State ConvertStringToState(string token)
-        {
-            return (State)Enum.Parse(typeof(State), token);
-        }
-
-        private Event ConvertStringToEvent(string token)
-        {
-            return (Event)Enum.Parse(typeof(Event), token);
-        }
-    }
-
-	internal class Transition
-    {
-        private State _startState;
-        private Event _trigger;
-        private State _endState;
-		private AbstractStateMachine.Action _action;
-
-        public Transition(State start, Event e, State end, AbstractStateMachine.Action a)
-        {
-            _startState = start;
-            _trigger = e;
-            _endState = end;
-            _action = a;
-        }
-
-		public State StartState
-        {
-            get { return _startState; }
-        }
-
-		public Event Trigger
-        {
-            get { return _trigger; }
-        }
-
-        public State EndState
-        {
-            get { return _endState; }
-        }
-
-		public AbstractStateMachine.Action Fire
-		{
-			get { return _action; }
-		}
-    }
-}");
+            this.Write("\t\t}\r\n\r\n\t\tprivate void AddTransition(State start, Event e, State end)\r\n        {\r\n" +
+                    "            transitions.Add(new Transition(start, e, end));\r\n        }\r\n\r\n\t\tpriv" +
+                    "ate void AddTransition(State start, Event e, State end, Action a)\r\n        {\r\n  " +
+                    "          transitions.Add(new Transition(start, e, end, a));\r\n        }\r\n\r\n\t\tpri" +
+                    "vate State ConvertStringToState(string token)\r\n        {\r\n            return (St" +
+                    "ate)Enum.Parse(typeof(State), token);\r\n        }\r\n\r\n        private Event Conver" +
+                    "tStringToEvent(string token)\r\n        {\r\n            return (Event)Enum.Parse(ty" +
+                    "peof(Event), token);\r\n        }\r\n    }\r\n\r\n\tinternal class Transition\r\n    {\r\n   " +
+                    "     private State _startState;\r\n        private Event _trigger;\r\n        privat" +
+                    "e State _endState;\r\n\t\tprivate AbstractStateMachine.Action _action;\r\n\r\n\t\tpublic T" +
+                    "ransition()\r\n        {\r\n\t\t}\r\n\r\n\t\tpublic Transition(State start, Event e, State e" +
+                    "nd)\r\n        {\r\n            _startState = start;\r\n            _trigger = e;\r\n   " +
+                    "         _endState = end;\r\n        }\r\n\r\n        public Transition(State start, E" +
+                    "vent e, State end, AbstractStateMachine.Action a)\r\n        {\r\n            _start" +
+                    "State = start;\r\n            _trigger = e;\r\n            _endState = end;\r\n       " +
+                    "     _action = a;\r\n        }\r\n\r\n\t\tpublic State StartState\r\n        {\r\n          " +
+                    "  get { return _startState; }\r\n        }\r\n\r\n\t\tpublic Event Trigger\r\n        {\r\n " +
+                    "           get { return _trigger; }\r\n        }\r\n\r\n        public State EndState\r" +
+                    "\n        {\r\n            get { return _endState; }\r\n        }\r\n\r\n\t\tpublic Abstrac" +
+                    "tStateMachine.Action Fire\r\n\t\t{\r\n\t\t\tget { return _action; }\r\n\t\t}\r\n    }\r\n}");
             return this.GenerationEnvironment.ToString();
         }
     }

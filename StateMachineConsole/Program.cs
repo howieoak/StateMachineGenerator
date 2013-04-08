@@ -9,11 +9,11 @@ namespace StateMachineConsole
     {
         static void Main(string[] args)
         {
-            string file = @"C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachineConsole\scxml\SCStopwatch.xml";
+            string file = @"C:\Projects\Fun\StateMachine\StateMachineGenerator\StateMachineConsole\scxml\SCTurnstile.xml";
             StateMachine.StateMachine sm = new StateMachine.StateMachine(file);
             
             string code = sm.TransformText();
-            System.IO.File.WriteAllText(@"C:\temp\GeneratedCode.cs", code);
+            System.IO.File.WriteAllText(@"C:\temp\StateMachine.cs", code);
 
         }
     }

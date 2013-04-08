@@ -4,13 +4,15 @@
 <#@ import namespace="System.Xml" #>
 <#@ import namespace="System.Xml.Linq" #>
 <#@ import namespace="System.Collections" #>
+<#@ import namespace="System.Collections.Generic" #>
 
 <#
 	string initialState = "";
-	IList states = new ArrayList();
-    IList events = new ArrayList();
-	IList transitions = new ArrayList();
+	HashSet<string> states = new HashSet<string>();
+    HashSet<string> events = new HashSet<string>();
+	IList<string> transitions = new List<string>();
 	
+
 	XDocument xmlFile = XDocument.Load(xml_file);
 
     // we assume that the first attribute of Root node is the
@@ -24,12 +26,25 @@
     {
         string startState = x_state.Attribute("id").Value;
         states.Add(startState);
-        XElement x_transition = x_state.Element(ns + "transition");
-        string trigger = x_transition.Attribute("event").Value;
-        events.Add(trigger);
-	    string targetState = x_transition.Attribute("target").Value;
-		string transition = startState + "|" + trigger + "|" + targetState;  
-        transitions.Add(transition);
+        //XElement x_transition = x_state.Element(ns + "transition");
+		var x_transitions = x_state.Elements(ns + "transition");
+		foreach (XElement x_transition in x_transitions)
+		{
+			string trigger = x_transition.Attribute("event").Value;
+			events.Add(trigger);
+			string targetState = x_transition.Attribute("target").Value;
+			string transition = "";
+			if (x_transition.Attribute("action") != null)
+            {
+				transition = startState + "|" + trigger + "|" + targetState + "|" + x_transition.Attribute("action").Value;  
+			}
+			else
+            {
+				transition = startState + "|" + trigger + "|" + targetState;  
+            }
+			transitions.Add(transition);
+
+        }
     }
 #>
 using System;
@@ -71,8 +86,11 @@ namespace StateMachine
 		<#
 			foreach(string t in transitions)
 			{
-				string[] t_array = t.Split('|'); 
-				WriteLine("public abstract void " + t_array[0] + t_array[2] + "Action();"); 
+				string[] t_array = t.Split('|');
+				if (t_array.Length == 4) // scxml contains action
+					WriteLine("public abstract void " + t_array[3] + "Action();");
+				//else
+				//	WriteLine("public abstract void " + t_array[0] + "To" + t_array[2] + "Action();"); 
 			}
 		#>
 
@@ -95,7 +113,9 @@ namespace StateMachine
                 if (CurrentState == trans.StartState && e == trans.Trigger)
                 {
                     CurrentState = trans.EndState;
-                    trans.Fire();
+					if (trans.Fire != null)
+						trans.Fire();
+					break;
                 }
             }
         }
@@ -103,25 +123,33 @@ namespace StateMachine
 		private void SetupTransitions()
 		{
             <#
-				//AddTranstition(State.LOCKED, Event.COIN, State.UNLOCKED, unlock);
-				//AddTranstition(State.LOCKED, Event.PASS, State.LOCKED, alarm);
-				//AddTranstition(State.UNLOCKED, Event.PASS, State.LOCKED, lockAction);
-				//AddTranstition(State.UNLOCKED, Event.COIN, State.UNLOCKED, thankYou);
 				foreach(string t in transitions)
 				{
 					string[] t_array = t.Split('|');
-					string startState = t_array[0];
-					string trigger = t_array[1];
-					string targetState = t_array[2];
-
-					Write("AddTransition(");
-					Write("ConvertStringToState(\"" + startState + "\"), ");
-					Write("ConvertStringToEvent(\"" + trigger + "\"), ");
-					Write("ConvertStringToState(\"" + targetState + "\"), ");
-					WriteLine("new Action(" + startState + targetState + "Action));");
+					
+					if (t_array.Length == 4) // scxml contains action
+                    {
+						Write("AddTransition(");
+						Write("ConvertStringToState(\"" + t_array[0] + "\"), ");
+						Write("ConvertStringToEvent(\"" + t_array[1] + "\"), ");
+						Write("ConvertStringToState(\"" + t_array[2] + "\"), ");
+						WriteLine("new Action(" + t_array[3] + "Action));");
+                    }
+					else
+                    {
+						Write("AddTransition(");
+						Write("ConvertStringToState(\"" + t_array[0] + "\"), ");
+						Write("ConvertStringToEvent(\"" + t_array[1] + "\"), ");
+						WriteLine("ConvertStringToState(\"" + t_array[2] + "\"));");
+                    }
 				}
 			#>
 		}
+
+		private void AddTransition(State start, Event e, State end)
+        {
+            transitions.Add(new Transition(start, e, end));
+        }
 
 		private void AddTransition(State start, Event e, State end, Action a)
         {
@@ -145,6 +173,17 @@ namespace StateMachine
         private Event _trigger;
         private State _endState;
 		private AbstractStateMachine.Action _action;
+
+		public Transition()
+        {
+		}
+
+		public Transition(State start, Event e, State end)
+        {
+            _startState = start;
+            _trigger = e;
+            _endState = end;
+        }
 
         public Transition(State start, Event e, State end, AbstractStateMachine.Action a)
         {
